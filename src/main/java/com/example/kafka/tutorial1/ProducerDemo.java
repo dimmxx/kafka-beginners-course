@@ -34,7 +34,7 @@ public class ProducerDemo {
         kafkaProducer.send(record);
 
         // flush data
-        kafkaProducer.flush();
+        //kafkaProducer.flush();
 
         // flush and close producer
         kafkaProducer.close();
