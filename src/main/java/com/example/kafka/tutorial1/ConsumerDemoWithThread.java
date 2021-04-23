@@ -20,34 +20,32 @@ public class ConsumerDemoWithThread {
     }
 
     public static void main(String[] args) {
-        new ConsumerDemoWithThread().run();
+        new ConsumerDemoWithThread().launch();
     }
 
-    private void run() {
+    private void launch() {
         Logger logger = LoggerFactory.getLogger(ConsumerDemoWithThread.class);
-
         String bootStrapServers = "127.0.0.1:9092";
         String groupId = "my-sixth-application";
         String topic = "first_topic";
         CountDownLatch latch = new CountDownLatch(1);
 
         logger.info("Creating the consumer thread");
-        Runnable myConsumerRunnable = new ConsumerRunnable(bootStrapServers, groupId, topic, latch);
-
+        ConsumerRunnable myConsumerRunnable = new ConsumerRunnable(bootStrapServers, groupId, topic, latch);
         Thread thread = new Thread(myConsumerRunnable);
         thread.start();
 
         // add a shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Caught shutdown hook");
-            ((ConsumerRunnable) myConsumerRunnable).shutdown();
+            logger.info("Caught shutdown hook[1]");
+            myConsumerRunnable.shutdown();
 
             try {
                 latch.await();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            logger.info("Application has exited");
+            logger.info("Application has exited[3]");
         }
         ));
 
@@ -56,13 +54,13 @@ public class ConsumerDemoWithThread {
         } catch (InterruptedException e) {
             logger.error("Application got interrupted", e);
         } finally {
-            logger.info("Application is closing");
+            logger.info("Application is closing[4]");
         }
     }
 
-    public class ConsumerRunnable implements Runnable {
+    public static class ConsumerRunnable implements Runnable {
 
-        private final Logger logger = LoggerFactory.getLogger(ConsumerRunnable.class.getName());
+        private final Logger logger = LoggerFactory.getLogger(ConsumerRunnable.class);
         private final CountDownLatch latch;
         private final KafkaConsumer<String, String> consumer;
 
@@ -71,8 +69,8 @@ public class ConsumerDemoWithThread {
                          String topic,
                          CountDownLatch latch) {
             this.latch = latch;
-            Properties properties = new Properties();
 
+            Properties properties = new Properties();
             properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootStrapServers);
             properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
@@ -100,8 +98,7 @@ public class ConsumerDemoWithThread {
                     }
                 }
             } catch (WakeupException e) {
-
-                logger.info("Received shutdown signal");
+                logger.info("Received shutdown signal[2]");
             } finally {
                 consumer.close();
                 latch.countDown(); // tell the main code we are done with the consumer

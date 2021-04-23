@@ -30,7 +30,7 @@ public class ProducerWithCallBackKeysDemo {
 
         Map<Integer, Integer> partitions = new HashMap<>();// inspect what partitions are written to
 
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 10; i++) {
 
             String key = "id_" + i;
             String topic = "first_topic";
