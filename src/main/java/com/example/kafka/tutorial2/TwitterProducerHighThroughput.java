@@ -21,18 +21,18 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class TwitterProducer {
+public class TwitterProducerHighThroughput {
 
     private static final String API_KEY = "BfM9OYK3LcY4gtne4pThwh6MZ";
     private static final String API_SECRET_KEY = "1YYl3rQDpL7W6HKm00KYGxaMxo91gHToLRKzI6WQYrjbvQAurj";
     private static final String ACCESS_TOKEN_SECRET = "dvAZdGHRTRHfSwV19XL98rKdo3wnTdEVMdqfhp4aOLoAF";
-    private final Logger logger = LoggerFactory.getLogger(TwitterProducer.class);
+    private final Logger logger = LoggerFactory.getLogger(TwitterProducerHighThroughput.class);
     private final String ACCESS_TOKEN = "171864751-JMesbGFAMeX6mgu8WzqrmKIXulTagm9ZDp8qOgve";
     // Optional: set up some followings and track terms
-    List<String> terms = Lists.newArrayList("kafka");
+    List<String> terms = Lists.newArrayList("bitcoin", "usa", "politics", "sport", "soccer");
 
     public static void main(String[] args) {
-        new TwitterProducer().launch();
+        new TwitterProducerHighThroughput().launch();
     }
 
     private void launch() {
@@ -111,7 +111,9 @@ public class TwitterProducer {
         properties.setProperty(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE));
         properties.setProperty(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");
 
-        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip"); //"lz4", "snappy"
+        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "20");
+        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32*1024)); //32KB batch size
 
         return new KafkaProducer<>(properties);
     }
