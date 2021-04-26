@@ -1,4 +1,4 @@
-package com.example.kafka.tutorial1;
+package com.example.kafka;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -12,14 +12,14 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
 
-public class ConsumerDemo {
+public class ConsumerDemoGroups {
 
     public static void main(String[] args) {
 
-        Logger logger = LoggerFactory.getLogger(ConsumerDemo.class);
+        Logger logger = LoggerFactory.getLogger(ConsumerDemoGroups.class);
 
         String bootStrapServers = "127.0.0.1:9092";
-        String groupId = "my-fourth-application";
+        String groupId = "my-fifth-application";
         String topic = "first_topic";
 
         Properties properties = new Properties();
@@ -34,7 +34,9 @@ public class ConsumerDemo {
 
         while (true) {
             ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofMillis(100));
+
             for (ConsumerRecord<String, String> record : consumerRecords) {
+
                 logger.info(
                         "Received new metadata\n" +
                                 "Key: " + record.key() + "\n" +
@@ -43,6 +45,7 @@ public class ConsumerDemo {
                                 "Partition: " + record.partition() + "\n" +
                                 "Offset: " + record.offset() + "\n"
                 );
+
             }
         }
     }
