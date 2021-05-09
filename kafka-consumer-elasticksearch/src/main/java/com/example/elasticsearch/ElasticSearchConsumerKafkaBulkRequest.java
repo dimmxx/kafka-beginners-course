@@ -12,6 +12,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -27,9 +29,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
 
-public class ElasticSearchConsumerKafkaManualCommit {
+public class ElasticSearchConsumerKafkaBulkRequest {
 
-    private static Logger logger = LoggerFactory.getLogger(ElasticSearchConsumerKafkaManualCommit.class);
+    private static Logger logger = LoggerFactory.getLogger(ElasticSearchConsumerKafkaBulkRequest.class);
 
     private static KafkaConsumer<String, String> createKafkaConsumer(){
         String bootStrapServers = "127.0.0.1:9092";
@@ -44,7 +46,7 @@ public class ElasticSearchConsumerKafkaManualCommit {
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "12");
+        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10");
 
         KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(properties);
         kafkaConsumer.subscribe(List.of(topic));
@@ -52,7 +54,7 @@ public class ElasticSearchConsumerKafkaManualCommit {
         return kafkaConsumer;
     }
 
-    private static RestHighLevelClient createClient(){
+    private static RestHighLevelClient createElasticSearchClient(){
 
         String hostname = "kafka-course-7221455738.eu-central-1.bonsaisearch.net";
         String username = "ykq894x6y8";
@@ -78,29 +80,37 @@ public class ElasticSearchConsumerKafkaManualCommit {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-
         KafkaConsumer<String, String> kafkaConsumer = createKafkaConsumer();
-        RestHighLevelClient client = createClient();
+        RestHighLevelClient elasticSearchClient = createElasticSearchClient();
 
         while (true) {
             ConsumerRecords<String, String> consumerRecords = kafkaConsumer.poll(Duration.ofMillis(100));
+            Integer recordCount = consumerRecords.count();
             logger.info("Received " + consumerRecords.count() + " records");
+
+            BulkRequest bulkRequest = new BulkRequest();
 
             for (ConsumerRecord<String, String> record : consumerRecords) {
                 String jsonString = record.value();
-                String id = parseJsonValue(jsonString);
-                IndexRequest indexRequest = new IndexRequest("twitter");
-                indexRequest.id(id);
-                indexRequest.source(jsonString, XContentType.JSON);
 
-                IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
-                logger.info(indexResponse.getId());
-                Thread.sleep(100);
+                try {
+                    String id = parseJsonValue(jsonString); // can throw NPE if data has no field 'id_str'
+                    IndexRequest indexRequest = new IndexRequest("twitter");
+                    indexRequest.id(id);
+                    indexRequest.source(jsonString, XContentType.JSON);
+                    bulkRequest.add(indexRequest);
+                } catch (NullPointerException e){
+                    logger.warn("Skipping bad data: " + record.value());
+                }
             }
-            logger.info("Committing offsets...");
-            kafkaConsumer.commitSync();
-            logger.info("Offsets have been committed");
-            Thread.sleep(1000);
+
+            if (recordCount > 0) {
+                BulkResponse bulkResponse = elasticSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+                logger.info("Committing offsets...");
+                kafkaConsumer.commitSync();
+                logger.info("Offsets have been committed");
+                Thread.sleep(1000);
+            }
         }
     }
 }
